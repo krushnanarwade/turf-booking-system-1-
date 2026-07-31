@@ -330,19 +330,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           role: role || 'customer'
         };
       } catch (popupErr: any) {
-        console.warn('Firebase Google popup skipped or failed:', popupErr);
+        console.warn('Firebase Google popup error:', popupErr);
         const errCode = popupErr?.code || '';
-        if (errCode === 'auth/popup-closed-by-user') {
+        if (errCode === 'auth/unauthorized-domain') {
+          throw new Error(
+            `Domain "${window.location.hostname}" is not authorized in Firebase. ` +
+            `To enable Google Auth on Render, add "${window.location.hostname}" in Firebase Console > Authentication > Settings > Authorized domains. ` +
+            `Or use Instant Demo Login below.`
+          );
+        } else if (errCode === 'auth/popup-blocked') {
+          throw new Error('Google sign-in popup was blocked by your browser. Please allow popups or use 1-Click Demo Login below.');
+        } else if (errCode === 'auth/popup-closed-by-user') {
           throw new Error('Google sign-in window was closed before completing.');
         } else {
-          // Fallback Google profile for unauthorized domains or blocked popups
-          console.info(`[Google Auth Fallback] Using Google demo account for hostname: ${window.location.hostname}`);
-          googleUserPayload = {
-            email: 'alex.google@example.com',
-            fullname: 'Alex Johnson (Google User)',
-            photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-            role: role || 'customer'
-          };
+          throw new Error(popupErr.message || 'Google sign-in failed. Please try again or use Instant Demo Login below.');
         }
       }
 
