@@ -1,0 +1,332 @@
+{
+  "users": [
+    {
+      "id": "usr-customer-1",
+      "fullname": "John Doe",
+      "email": "john@example.com",
+      "phone": "+91 98765 43210",
+      "role": "customer",
+      "avatarUrl": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80",
+      "preferredSports": [
+        "Cricket",
+        "Football"
+      ],
+      "status": "active",
+      "created_at": "2026-01-01T10:00:00Z"
+    },
+    {
+      "id": "owner-1",
+      "fullname": "David Miller (Apex Sports)",
+      "email": "owner@turfhub.com",
+      "phone": "+91 98111 22233",
+      "role": "owner",
+      "avatarUrl": "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=200&q=80",
+      "preferredSports": [
+        "Football",
+        "Box Cricket"
+      ],
+      "status": "active",
+      "created_at": "2026-01-02T10:00:00Z"
+    },
+    {
+      "id": "usr-admin-1",
+      "fullname": "Platform Administrator",
+      "email": "admin@turfhub.com",
+      "phone": "+91 90000 00000",
+      "role": "admin",
+      "avatarUrl": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=200&q=80",
+      "status": "active",
+      "created_at": "2026-01-01T00:00:00Z"
+    }
+  ],
+  "turfs": [
+    {
+      "id": "turf-1",
+      "owner_id": "owner-1",
+      "owner_name": "Apex Sports Infra",
+      "name": "Champions Arena Box Cricket & Football",
+      "description": "Premier FIFA-grade synthetic turf featuring heavy-duty shock absorption, high-power LED floodlights, professional netting, and comfortable dugout seating.",
+      "location": "102 Sports Complex Way, Bandra West",
+      "city": "Mumbai",
+      "area": "Bandra West",
+      "latitude": 19.0596,
+      "longitude": 72.8295,
+      "price_per_hour": 1200,
+      "weekend_price_per_hour": 1500,
+      "sport_types": [
+        "Box Cricket",
+        "Football"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=1200&q=80"
+      ],
+      "rating": 4.8,
+      "reviews_count": 128,
+      "amenities": [
+        "Floodlights",
+        "Parking",
+        "Changing Room",
+        "Locker",
+        "Equipment Rental",
+        "Drinking Water",
+        "Cafeteria"
+      ],
+      "status": "active",
+      "is_featured": true,
+      "opening_time": "06:00",
+      "closing_time": "23:00",
+      "created_at": "2026-01-10T10:00:00Z"
+    },
+    {
+      "id": "turf-2",
+      "owner_id": "owner-1",
+      "owner_name": "Apex Sports Infra",
+      "name": "Skyline Turf & Football Ground",
+      "description": "Expansive 7-a-side lush green football arena located on a scenic rooftop with night stadium lighting and panoramic city skyline views.",
+      "location": "45 Tech Park Avenue, HSR Layout",
+      "city": "Bangalore",
+      "area": "HSR Layout",
+      "latitude": 12.9121,
+      "longitude": 77.6446,
+      "price_per_hour": 1600,
+      "weekend_price_per_hour": 2000,
+      "sport_types": [
+        "Football",
+        "Cricket"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1575361204480-aadea25e6e68?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80"
+      ],
+      "rating": 4.9,
+      "reviews_count": 94,
+      "amenities": [
+        "Floodlights",
+        "Dugout",
+        "First Aid Kit",
+        "Shower Rooms",
+        "Free WiFi",
+        "Parking"
+      ],
+      "status": "active",
+      "is_featured": true,
+      "opening_time": "05:00",
+      "closing_time": "23:30",
+      "created_at": "2026-01-15T09:00:00Z"
+    },
+    {
+      "id": "turf-3",
+      "owner_id": "owner-2",
+      "owner_name": "ProCourts Global",
+      "name": "Smash Pro Badminton & Tennis Club",
+      "description": "Indoor air-conditioned BWF-standard synthetic wooden courts with glare-free overhead LED illuminators and pro shop.",
+      "location": "88 Olympic Ring Road, Kothrud",
+      "city": "Pune",
+      "area": "Kothrud",
+      "latitude": 18.5074,
+      "longitude": 73.8077,
+      "price_per_hour": 800,
+      "weekend_price_per_hour": 1000,
+      "sport_types": [
+        "Badminton",
+        "Tennis"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1554068865-24cecd4e34b8?auto=format&fit=crop&w=1200&q=80"
+      ],
+      "rating": 4.7,
+      "reviews_count": 62,
+      "amenities": [
+        "Air Conditioned",
+        "Pro Shop",
+        "Locker Room",
+        "Shower",
+        "Drinking Water"
+      ],
+      "status": "active",
+      "is_featured": false,
+      "opening_time": "06:00",
+      "closing_time": "22:00",
+      "created_at": "2026-02-01T11:00:00Z"
+    },
+    {
+      "id": "turf-4",
+      "owner_id": "owner-2",
+      "owner_name": "ProCourts Global",
+      "name": "VolleyPro Beach Volleyball Arena",
+      "description": "Clean washed quartz-sand beach volleyball court with floodlights, umpire chair, music system, and beachside spectator lounge.",
+      "location": "12 Coastal Boulevard, Jubilee Hills",
+      "city": "Hyderabad",
+      "area": "Jubilee Hills",
+      "latitude": 17.4319,
+      "longitude": 78.4072,
+      "price_per_hour": 950,
+      "weekend_price_per_hour": 1200,
+      "sport_types": [
+        "Volleyball"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1592656094267-764a45160876?auto=format&fit=crop&w=1200&q=80"
+      ],
+      "rating": 4.6,
+      "reviews_count": 38,
+      "amenities": [
+        "Floodlights",
+        "Music System",
+        "Shower",
+        "Restroom",
+        "Snack Bar"
+      ],
+      "status": "active",
+      "is_featured": false,
+      "opening_time": "07:00",
+      "closing_time": "22:00",
+      "created_at": "2026-02-10T14:00:00Z"
+    },
+    {
+      "id": "turf-5",
+      "owner_id": "owner-1",
+      "owner_name": "Apex Sports Infra",
+      "name": "Metro Box Cricket Hub",
+      "description": "High-speed indoor box cricket stadium with spring-loaded bounce grass matting, electronic scoreboard, and video recording setup.",
+      "location": "204 Ring Road, Connaught Place",
+      "city": "Delhi",
+      "area": "Connaught Place",
+      "latitude": 28.6315,
+      "longitude": 77.2167,
+      "price_per_hour": 1350,
+      "weekend_price_per_hour": 1700,
+      "sport_types": [
+        "Box Cricket",
+        "Cricket"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1531415074968-036ba1b575da?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=1200&q=80"
+      ],
+      "rating": 4.85,
+      "reviews_count": 110,
+      "amenities": [
+        "Scoreboard",
+        "Video Recording",
+        "Floodlights",
+        "Chilled Water",
+        "Parking"
+      ],
+      "status": "active",
+      "is_featured": true,
+      "opening_time": "06:00",
+      "closing_time": "23:59",
+      "created_at": "2026-02-14T08:00:00Z"
+    }
+  ],
+  "slots": [],
+  "bookings": [
+    {
+      "id": "bk-1001",
+      "user_id": "usr-customer-1",
+      "user_name": "John Doe",
+      "user_email": "john@example.com",
+      "user_phone": "+91 98765 43210",
+      "turf_id": "turf-1",
+      "turf_name": "Champions Arena Box Cricket & Football",
+      "turf_image": "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&w=1200&q=80",
+      "turf_location": "102 Sports Complex Way, Bandra West, Mumbai",
+      "slot_id": "slot-sample-1",
+      "booking_date": "2026-08-01",
+      "start_time": "18:00",
+      "end_time": "19:00",
+      "sport_type": "Box Cricket",
+      "total_amount": 1152,
+      "discount_amount": 240,
+      "tax_amount": 192,
+      "booking_status": "confirmed",
+      "payment_status": "paid",
+      "created_at": "2026-07-31T01:19:24.832Z",
+      "qr_code": "TH-BK-1001-CONFIRMED"
+    }
+  ],
+  "payments": [
+    {
+      "id": "pay-1001",
+      "booking_id": "bk-1001",
+      "user_id": "usr-customer-1",
+      "payment_gateway": "razorpay",
+      "payment_id": "pay_rzp_live_9988112233",
+      "order_id": "order_rzp_776655",
+      "amount": 1152,
+      "currency": "INR",
+      "payment_status": "success",
+      "transaction_time": "2026-07-31T01:19:24.832Z"
+    }
+  ],
+  "reviews": [
+    {
+      "id": "rev-1",
+      "user_id": "usr-customer-1",
+      "user_name": "John Doe",
+      "user_avatar": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80",
+      "turf_id": "turf-1",
+      "rating": 5,
+      "comment": "Exceptional grass bounce and top-tier floodlights. Played a 10-over box cricket match under lights. Staff was very supportive!",
+      "created_at": "2026-03-01T18:30:00Z"
+    },
+    {
+      "id": "rev-2",
+      "user_id": "usr-customer-2",
+      "user_name": "Rahul Sharma",
+      "user_avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80",
+      "turf_id": "turf-1",
+      "rating": 4.5,
+      "comment": "Super clean changing rooms and clean drinking water. Very easy parking access right next to Bandra West station.",
+      "created_at": "2026-03-05T20:10:00Z"
+    }
+  ],
+  "coupons": [
+    {
+      "id": "c-1",
+      "code": "TURF20",
+      "discount_percentage": 20,
+      "max_discount": 300,
+      "min_order_amount": 800,
+      "valid_until": "2026-12-31",
+      "is_active": true,
+      "description": "Get 20% OFF up to ₹300 on any sports turf booking!"
+    },
+    {
+      "id": "c-2",
+      "code": "FIRSTGAME",
+      "discount_percentage": 30,
+      "max_discount": 500,
+      "min_order_amount": 1000,
+      "valid_until": "2026-12-31",
+      "is_active": true,
+      "description": "Special 30% discount for first-time turf bookings."
+    },
+    {
+      "id": "c-3",
+      "code": "WEEKEND15",
+      "discount_percentage": 15,
+      "max_discount": 400,
+      "min_order_amount": 1200,
+      "valid_until": "2026-12-31",
+      "is_active": true,
+      "description": "Weekend celebration discount: 15% OFF!"
+    }
+  ],
+  "notifications": [
+    {
+      "id": "notif-1",
+      "user_id": "usr-customer-1",
+      "title": "Welcome to TurfHub! ⚽🏏",
+      "message": "Explore nearby sports turfs in your city and book your next match seamlessly.",
+      "type": "system",
+      "is_read": false,
+      "created_at": "2026-07-31T06:19:24.831Z"
+    }
+  ]
+}

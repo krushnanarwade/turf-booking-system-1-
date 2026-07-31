@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://turfuser:turfpass@db:5432/turfdb
+      - SECRET_KEY=SUPER_SECRET_JWT_KEY_TURFHUB_2026
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=turfuser
+      - POSTGRES_PASSWORD=turfpass
+      - POSTGRES_DB=turfdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

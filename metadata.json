@@ -1,0 +1,6 @@
+{
+  "name": "Turf Booking System",
+  "description": "Full-stack sports turf booking platform with customer discovery, owner turf management, online payments, and admin analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

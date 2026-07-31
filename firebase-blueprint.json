@@ -1,0 +1,55 @@
+{
+  "entities": {
+    "users": {
+      "title": "Users",
+      "description": "User profile and role information",
+      "properties": {
+        "fullname": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "role": { "type": "string", "enum": ["customer", "owner", "admin"] },
+        "status": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["fullname", "email", "role"]
+    },
+    "turfs": {
+      "title": "Turfs",
+      "description": "Turf sports venues ground listings",
+      "properties": {
+        "owner_id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "location": { "type": "string" },
+        "city": { "type": "string" },
+        "area": { "type": "string" },
+        "price_per_hour": { "type": "number" },
+        "weekend_price_per_hour": { "type": "number" },
+        "sport_types": { "type": "array", "items": { "type": "string" } },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "rating": { "type": "number" },
+        "reviews_count": { "type": "number" },
+        "status": { "type": "string" }
+      },
+      "required": ["name", "city", "price_per_hour", "sport_types"]
+    },
+    "bookings": {
+      "title": "Bookings",
+      "description": "Customer slot reservations",
+      "properties": {
+        "user_id": { "type": "string" },
+        "turf_id": { "type": "string" },
+        "booking_date": { "type": "string" },
+        "start_time": { "type": "string" },
+        "end_time": { "type": "string" },
+        "sport_type": { "type": "string" },
+        "total_amount": { "type": "number" },
+        "booking_status": { "type": "string" },
+        "payment_status": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["user_id", "turf_id", "booking_date", "start_time", "end_time"]
+    }
+  }
+}
