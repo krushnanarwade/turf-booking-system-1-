@@ -171,7 +171,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({ onNavigateHome }) => {
     setIsLoading(true);
     try {
       const fullPhone = `${countryCode}${phone.replace(/\D/g, '')}`;
-      const success = await verifyPhoneOtp(fullPhone, enteredOtp, undefined, selectedRole);
+      const success = await verifyPhoneOtp(fullPhone, enteredOtp, undefined, selectedRole, countryCode);
 
       if (success) {
         if (selectedRole === 'customer') {

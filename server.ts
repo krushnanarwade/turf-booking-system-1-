@@ -410,7 +410,41 @@ const otpStore = new Map<string, { code: string; expiresAt: number; attempts: nu
 
 function sanitizePhone(rawPhone: string): string {
   if (!rawPhone) return '';
-  return rawPhone.trim().replace(/[^\d+]/g, '');
+  const trimmed = rawPhone.trim();
+  const digits = trimmed.replace(/\D/g, '');
+  if (trimmed.startsWith('+')) {
+    return `+${digits}`;
+  }
+  return digits;
+}
+
+function getNormalizedPhone(phoneInput: string, countryCodeInput?: string): string {
+  if (!phoneInput) return '';
+  let phoneStr = phoneInput.trim();
+  let cc = (countryCodeInput || '').trim();
+
+  // If phoneStr already starts with '+', it is already fully formatted with country code
+  if (phoneStr.startsWith('+')) {
+    return sanitizePhone(phoneStr);
+  }
+
+  // Ensure cc starts with '+'
+  if (cc && !cc.startsWith('+')) {
+    cc = `+${cc}`;
+  }
+
+  const ccDigits = cc.replace(/\D/g, '');
+  const phoneDigits = phoneStr.replace(/\D/g, '');
+
+  if (ccDigits && phoneDigits.startsWith(ccDigits)) {
+    return sanitizePhone(`+${phoneDigits}`);
+  }
+
+  if (cc) {
+    return sanitizePhone(`${cc}${phoneDigits}`);
+  }
+
+  return sanitizePhone(phoneDigits);
 }
 
 function setAuthTokenAndCookie(res: express.Response, user: User) {
@@ -552,8 +586,7 @@ app.post('/auth/google', handleGoogleAuth);
 // 2. Send Phone OTP Route
 const handleSendOtp = (req: express.Request, res: express.Response) => {
   const { phone, countryCode } = req.body;
-  const rawPhone = phone ? `${countryCode || ''}${phone}` : '';
-  const cleanPhone = sanitizePhone(rawPhone || req.body.phoneNumber);
+  const cleanPhone = getNormalizedPhone(phone || req.body.phoneNumber, countryCode);
 
   if (!cleanPhone || cleanPhone.length < 8) {
     return res.status(400).json({ error: 'Please enter a valid phone number with country code' });
@@ -608,8 +641,7 @@ const handleVerifyOtp = (req: express.Request, res: express.Response) => {
     }
   }
 
-  const rawPhone = phone ? `${countryCode || ''}${phone}` : '';
-  const cleanPhone = sanitizePhone(rawPhone || req.body.phoneNumber);
+  const cleanPhone = getNormalizedPhone(phone || req.body.phoneNumber, countryCode);
   const enteredOtp = (otp || code || '').trim();
 
   if (!cleanPhone) {
@@ -620,7 +652,22 @@ const handleVerifyOtp = (req: express.Request, res: express.Response) => {
     return res.status(400).json({ error: 'Please enter a valid 6-digit OTP code' });
   }
 
-  const storedOtpData = otpStore.get(cleanPhone);
+  let storedOtpData = otpStore.get(cleanPhone);
+
+  // Fallback search: match by last 10 digits if exact phone string differs slightly
+  if (!storedOtpData && cleanPhone) {
+    const targetDigits = cleanPhone.replace(/\D/g, '').slice(-10);
+    if (targetDigits.length >= 7) {
+      for (const [key, val] of otpStore.entries()) {
+        const keyDigits = key.replace(/\D/g, '').slice(-10);
+        if (keyDigits === targetDigits) {
+          storedOtpData = val;
+          otpStore.delete(key);
+          break;
+        }
+      }
+    }
+  }
 
   if (!storedOtpData) {
     return res.status(400).json({ error: 'OTP not found or expired. Please click "Resend OTP".' });
@@ -643,7 +690,11 @@ const handleVerifyOtp = (req: express.Request, res: express.Response) => {
 
   otpStore.delete(cleanPhone);
 
-  let user = store.users.find(u => u.phone === cleanPhone || (u.phone && sanitizePhone(u.phone) === cleanPhone));
+  let user = store.users.find(u => {
+    if (!u.phone) return false;
+    const uClean = getNormalizedPhone(u.phone);
+    return uClean === cleanPhone || (uClean && cleanPhone && uClean.replace(/\D/g, '').slice(-10) === cleanPhone.replace(/\D/g, '').slice(-10));
+  });
 
   const userName = fullname || name || `Player ${cleanPhone.slice(-4)}`;
   const selectedRole = (role === 'owner' ? 'owner' : 'customer') as UserRole;

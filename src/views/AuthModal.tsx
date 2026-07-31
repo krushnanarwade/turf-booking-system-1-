@@ -150,7 +150,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
     setIsLoading(true);
     try {
       const fullPhone = `${countryCode}${phone.replace(/\D/g, '')}`;
-      const success = await verifyPhoneOtp(fullPhone, enteredOtp, fullname, role);
+      const success = await verifyPhoneOtp(fullPhone, enteredOtp, fullname, role, countryCode);
       if (success) {
         setSuccessMessage('Phone OTP verified! Redirecting...');
         setTimeout(() => {

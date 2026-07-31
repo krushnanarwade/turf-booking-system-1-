@@ -28,7 +28,7 @@ interface AuthContextType {
   register: (fullname: string, email: string, phone: string, role: UserRole, password?: string) => Promise<boolean>;
   loginWithGoogle: (role?: UserRole) => Promise<boolean>;
   sendPhoneOtp: (phone: string, countryCode?: string) => Promise<{ success: boolean; message: string; otpCode?: string; resendCooldownSeconds?: number }>;
-  verifyPhoneOtp: (phone: string, otp: string, fullname?: string, role?: UserRole) => Promise<boolean>;
+  verifyPhoneOtp: (phone: string, otp: string, fullname?: string, role?: UserRole, countryCode?: string) => Promise<boolean>;
   loginWithOtp: (identifier: string, isPhone: boolean, fullname?: string, role?: UserRole) => Promise<boolean>;
   completeOwnerProfile: (ownerData: {
     businessName: string;
@@ -401,12 +401,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const verifyPhoneOtp = async (phone: string, otp: string, fullname?: string, role?: UserRole): Promise<boolean> => {
+  const verifyPhoneOtp = async (phone: string, otp: string, fullname?: string, role?: UserRole, countryCode?: string): Promise<boolean> => {
     try {
       const res = await fetch('/api/auth/phone/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, otp, fullname, role })
+        body: JSON.stringify({ phone, otp, fullname, role, countryCode })
       });
 
       const data = await res.json();
