@@ -103,28 +103,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const savedToken = localStorage.getItem('turf_app_token');
 
     if (savedUser && savedToken && !user) {
-      setUser(JSON.parse(savedUser));
-      setToken(savedToken);
-      setIsLoading(false);
-    } else if (!user && !savedUser) {
-      // Default demo customer
-      const defaultCustomer: User = {
-        id: 'usr-customer-1',
-        fullname: 'John Doe',
-        email: 'john@example.com',
-        phone: '+91 98765 43210',
-        role: 'customer',
-        avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
-        preferredSports: ['Cricket', 'Football'],
-        status: 'active',
-        created_at: new Date().toISOString()
-      };
-      setUser(defaultCustomer);
-      setToken('mock_jwt_token_customer');
-      localStorage.setItem('turf_app_user', JSON.stringify(defaultCustomer));
-      localStorage.setItem('turf_app_token', 'mock_jwt_token_customer');
-      setIsLoading(false);
+      try {
+        setUser(JSON.parse(savedUser));
+        setToken(savedToken);
+      } catch (e) {
+        localStorage.removeItem('turf_app_user');
+        localStorage.removeItem('turf_app_token');
+      }
     }
+    setIsLoading(false);
 
     return () => unsubscribe();
   }, []);
