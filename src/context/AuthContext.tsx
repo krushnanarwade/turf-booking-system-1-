@@ -104,8 +104,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (savedUser && savedToken && !user) {
       try {
-        setUser(JSON.parse(savedUser));
-        setToken(savedToken);
+        const parsed = JSON.parse(savedUser);
+        // Clear old automatically saved demo customer from previous site versions
+        if (parsed?.id === 'usr-customer-1' && savedToken === 'mock_jwt_token_customer') {
+          localStorage.removeItem('turf_app_user');
+          localStorage.removeItem('turf_app_token');
+        } else {
+          setUser(parsed);
+          setToken(savedToken);
+        }
       } catch (e) {
         localStorage.removeItem('turf_app_user');
         localStorage.removeItem('turf_app_token');
