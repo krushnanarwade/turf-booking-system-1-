@@ -329,14 +329,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           photoUrl: fbUser.photoURL,
           role: role || 'customer'
         };
-      } catch (popupErr) {
-        console.warn('Firebase Google popup skipped or unavailable, using OAuth service route:', popupErr);
-        googleUserPayload = {
-          email: 'alex.google@example.com',
-          fullname: 'Alex Johnson',
-          photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-          role: role || 'customer'
-        };
+      } catch (popupErr: any) {
+        console.warn('Firebase Google popup skipped or failed:', popupErr);
+        const errCode = popupErr?.code || '';
+        if (errCode === 'auth/unauthorized-domain') {
+          throw new Error(`Domain not authorized in Firebase Auth. Add "${window.location.hostname}" to Firebase Console > Authentication > Settings > Authorized Domains, or use Instant Demo Login below.`);
+        } else if (errCode === 'auth/popup-blocked') {
+          throw new Error('Google sign-in popup was blocked by your browser. Please allow popups or use Instant Demo Login below.');
+        } else if (errCode === 'auth/popup-closed-by-user') {
+          throw new Error('Google sign-in window was closed before completing.');
+        } else {
+          // Fallback demo account for testing environments
+          googleUserPayload = {
+            email: 'alex.google@example.com',
+            fullname: 'Alex Johnson',
+            photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+            role: role || 'customer'
+          };
+        }
       }
 
       const res = await fetch('/api/auth/google', {

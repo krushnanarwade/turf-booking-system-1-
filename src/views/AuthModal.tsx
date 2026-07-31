@@ -194,6 +194,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
     }
   };
 
+  const handleQuickLogin = async (selectedRole: UserRole) => {
+    setErrorMessage('');
+    setSuccessMessage('');
+    setIsLoading(true);
+    try {
+      if (selectedRole === 'customer') {
+        await login('john@example.com', 'customer', 'password123');
+      } else if (selectedRole === 'owner') {
+        await login('owner@turfhub.com', 'owner', 'password123');
+      } else {
+        await login('admin@turfhub.com', 'admin', 'password123');
+      }
+      setSuccessMessage(`Logged in as ${selectedRole.toUpperCase()} demo profile!`);
+      setTimeout(() => {
+        onClose();
+      }, 400);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Quick login failed.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleQuickFill = (type: UserRole) => {
     setErrorMessage('');
     setSuccessMessage('');
@@ -325,12 +348,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
               <div className="text-center space-y-1">
                 <p className="font-bold text-slate-800 text-sm">One-Tap Google Authentication</p>
                 <p className="text-slate-500 text-[11px]">
-                  Sign in instantly using your Google account details and profile photo.
+                  Sign in using your Google account details or pick an instant demo profile below.
                 </p>
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Select Account Type</label>
+                <label className="font-bold text-slate-700 block mb-1">Select Google Account Role</label>
                 <select
                   value={role}
                   onChange={e => setRole(e.target.value as UserRole)}
@@ -365,7 +388,43 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                 )}
               </button>
 
-              <div className="pt-2 text-center text-[10px] text-slate-400">
+              <div className="relative my-3 text-center">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div>
+                <span className="relative bg-white px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Or Instant Demo Login (1-Click)
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin('customer')}
+                  className="p-2.5 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-xl text-center transition-all cursor-pointer group"
+                >
+                  <p className="font-extrabold text-slate-800 group-hover:text-emerald-700 text-[11px]">⚽ Player</p>
+                  <p className="text-[9px] text-slate-400 font-medium mt-0.5">John Doe</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin('owner')}
+                  className="p-2.5 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-xl text-center transition-all cursor-pointer group"
+                >
+                  <p className="font-extrabold text-slate-800 group-hover:text-emerald-700 text-[11px]">🏟️ Owner</p>
+                  <p className="text-[9px] text-slate-400 font-medium mt-0.5">David Miller</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin('admin')}
+                  className="p-2.5 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-xl text-center transition-all cursor-pointer group"
+                >
+                  <p className="font-extrabold text-slate-800 group-hover:text-emerald-700 text-[11px]">🛡️ Admin</p>
+                  <p className="text-[9px] text-slate-400 font-medium mt-0.5">Platform</p>
+                </button>
+              </div>
+
+              <div className="pt-1 text-center text-[10px] text-slate-400">
                 🔒 Protected by Google OAuth & JWT Encrypted Cookies
               </div>
             </div>

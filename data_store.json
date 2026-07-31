@@ -49,6 +49,18 @@
       "is_approved": true,
       "status": "active",
       "created_at": "2026-07-31T08:46:33.403Z"
+    },
+    {
+      "id": "haIBxBxizVdwW9KCDnRVs1ZYMy93",
+      "fullname": "Krushna Narwade",
+      "email": "krushnanarwade7781@gmail.com",
+      "phone": "",
+      "role": "customer",
+      "authProvider": "google",
+      "avatarUrl": "https://lh3.googleusercontent.com/a/ACg8ocL9VcOdHFY8wby0qOMJcxbE025AQGvIxO7PaLPCrQMpazn4GA=s96-c",
+      "is_approved": true,
+      "status": "active",
+      "created_at": "2026-07-31T09:53:38.302Z"
     }
   ],
   "turfs": [
