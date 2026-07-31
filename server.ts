@@ -8,7 +8,7 @@ import { createServer as createViteServer } from 'vite';
 import { Turf, Slot, Booking, Payment, Review, Coupon, NotificationItem, User, UserRole, AdminStats } from './src/types';
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-jwt-key-turfhub-2026';
 
 app.use(cors({ origin: true, credentials: true }));
