@@ -114,7 +114,7 @@ interface Turf {
 
 ---
 
-## 🛠️ Setup Instructions
+## 🛠️ Setup & Deployment Instructions
 
 ### 1. Clone & Install Dependencies
 ```bash
@@ -136,3 +136,41 @@ npm run dev
 ```
 
 App will run on `http://localhost:3000`.
+
+---
+
+## 🔥 Firebase Configuration & Production Deployment Guide
+
+### 1. Firebase Authentication Setup
+To enable Google OAuth and Phone OTP in Firebase:
+1. Go to the [Firebase Console](https://console.firebase.google.com/) and select your project (`ai-studio-turfbookingsyste-9f79168c-0877-4eb3-bf32-305a4320aa7b`).
+2. Navigate to **Authentication -> Sign-in method**.
+3. Enable **Google** and **Phone** auth providers.
+
+### 2. ⚠️ Critical: Authorized Domains for Render Deployment
+When deploying your frontend or hosted web service to platforms like **Render** (`https://<your-app-name>.onrender.com`), Firebase Auth will reject sign-in operations (Google OAuth popup/redirect, reCAPTCHA phone verification) unless the deployment domain is explicitly listed in Firebase's **Authorized Domains**.
+
+#### Step-by-Step Fix for Render Authentication Errors (`auth/unauthorized-domain`):
+1. Open the [Firebase Console](https://console.firebase.google.com/).
+2. Select your Firebase project.
+3. Go to **Authentication** from the left menu, then click on the **Settings** tab.
+4. Click **Authorized domains**.
+5. Click **Add domain**.
+6. Enter your Render domain name (e.g. `turf-booking-system.onrender.com` or custom domain).
+7. Click **Save**.
+
+> **Note**: Both `localhost` and AI Studio sandbox domains (`*.run.app`) are pre-authorized, but any production host URL (such as Render or Vercel) **must** be added manually in Firebase Console to prevent production login failures.
+
+### 3. Firestore Security Rules
+Ensure the security rules in `firestore.rules` are deployed to protect production data:
+
+- **Deploying via Firebase CLI**:
+  ```bash
+  firebase deploy --only firestore:rules
+  ```
+- **Security Rule Overview (`firestore.rules`)**:
+  - `/users/{userId}`: Users can read and write their own document (`request.auth.uid == userId`).
+  - `/turfs/{turfId}`: Public read access for active grounds; write access restricted to approved turf owners and platform admins.
+  - `/bookings/{bookingId}`: Authenticated customers can access their own bookings; owners can view bookings for their grounds.
+  - Default rule blocks unauthorized global writes.
+
