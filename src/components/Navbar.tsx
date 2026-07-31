@@ -140,6 +140,17 @@ export const Navbar: React.FC<NavbarProps> = ({
               <ShieldCheck className="w-4 h-4 text-purple-600" /> Admin Control
             </button>
           )}
+
+          {!user && (
+            <button
+              onClick={() => onNavigate('signup')}
+              className={`px-3 py-2 rounded-lg transition-colors font-bold ${
+                currentView === 'signup' ? 'text-emerald-600 bg-emerald-50 font-semibold' : 'hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              Sign Up / Join
+            </button>
+          )}
         </nav>
 
         {/* Right Actions */}
@@ -284,12 +295,20 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
           ) : (
-            <button
-              onClick={onOpenAuth}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-4 py-2 rounded-xl transition-all shadow-md shadow-emerald-600/20 cursor-pointer"
-            >
-              Sign In / Register
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onOpenAuth}
+                className="text-slate-700 hover:text-slate-900 font-bold text-xs px-3 py-2 rounded-xl transition-colors cursor-pointer hidden sm:block"
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => onNavigate('signup')}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-4 py-2 rounded-xl transition-all shadow-md shadow-emerald-600/20 cursor-pointer"
+              >
+                Sign Up
+              </button>
+            </div>
           )}
         </div>
       </div>

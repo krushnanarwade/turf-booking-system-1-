@@ -6,9 +6,11 @@ export interface User {
   email: string;
   phone: string;
   role: UserRole;
+  authProvider?: 'google' | 'phone' | 'email';
   avatarUrl?: string;
   preferredSports?: string[];
-  status: 'active' | 'suspended';
+  is_approved?: boolean;
+  status: 'active' | 'pending' | 'suspended';
   created_at: string;
 }
 
@@ -33,6 +35,7 @@ export interface Turf {
   reviews_count: number;
   amenities: string[];
   status: 'active' | 'pending' | 'rejected';
+  is_approved?: boolean;
   is_featured?: boolean;
   opening_time: string; // e.g., "06:00"
   closing_time: string; // e.g., "23:00"

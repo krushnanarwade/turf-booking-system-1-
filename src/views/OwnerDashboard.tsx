@@ -171,8 +171,31 @@ export const OwnerDashboard: React.FC = () => {
   const totalRevenue = bookings.reduce((acc, b) => acc + (b.payment_status === 'paid' ? b.total_amount : 0), 0);
   const todayBookingsCount = bookings.filter(b => b.booking_date === new Date().toISOString().split('T')[0]).length;
 
+  const isOwnerApproved = user?.is_approved !== false && user?.status !== 'pending';
+  const hasPendingTurfs = turfs.some(t => t.status === 'pending' || t.is_approved === false);
+
   return (
     <div className="space-y-8 pb-16">
+      {/* Persistent Pending Approval Banner */}
+      {(!isOwnerApproved || hasPendingTurfs) && (
+        <div className="bg-amber-500/10 border border-amber-500/30 p-5 rounded-3xl text-amber-200 flex items-start gap-4 shadow-lg">
+          <div className="p-3 bg-amber-500/20 text-amber-400 rounded-2xl shrink-0">
+            <Clock className="w-6 h-6 animate-pulse" />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-extrabold text-amber-300">Venue Registration Pending Administrator Review</h3>
+              <span className="px-2 py-0.5 text-[10px] uppercase font-black bg-amber-500/20 text-amber-300 rounded-lg border border-amber-500/30">
+                Pending Review
+              </span>
+            </div>
+            <p className="text-xs text-amber-200/90 leading-relaxed">
+              Your venue details have been submitted and are undergoing administrator verification. You can view and edit ground details below, but publishing live match slots for public player bookings will activate immediately upon approval.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header Banner */}
       <div className="bg-slate-900 text-white p-8 rounded-3xl border border-slate-800 shadow-xl flex flex-wrap items-center justify-between gap-4">
         <div>

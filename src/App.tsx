@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider, useNotifications } from './context/NotificationContext';
 import { WishlistProvider } from './context/WishlistContext';
-import { RoleBanner } from './components/RoleBanner';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { CustomerHome } from './views/CustomerHome';
@@ -11,18 +10,47 @@ import { CustomerDashboard } from './views/CustomerDashboard';
 import { WishlistView } from './views/WishlistView';
 import { OwnerDashboard } from './views/OwnerDashboard';
 import { AdminDashboard } from './views/AdminDashboard';
+import { SignUpPage } from './views/SignUpPage';
 import { AuthModal } from './views/AuthModal';
 import { Turf } from './types';
 import { CheckCircle2, AlertCircle } from 'lucide-react';
 
 function MainAppContent() {
-  const { role } = useAuth();
+  const { user, pendingBookingIntent, role } = useAuth();
   const { toast } = useNotifications();
 
   const [currentView, setCurrentView] = useState<string>('home');
   const [selectedTurfId, setSelectedTurfId] = useState<string | null>(null);
   const [selectedCity, setSelectedCity] = useState<string>('All');
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+
+  // Auto-redirect to turf detail if pending booking intent exists after login
+  React.useEffect(() => {
+    if (user && pendingBookingIntent?.turfId) {
+      setSelectedTurfId(pendingBookingIntent.turfId);
+      setCurrentView('turf-detail');
+      setShowAuthModal(false);
+    }
+  }, [user, pendingBookingIntent]);
+
+  // Handle direct URL query / parameter routing (e.g. ?redirect=/book/slotId or ?turfId=...)
+  React.useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const path = window.location.pathname;
+    const redirectParam = urlParams.get('redirect');
+    const turfIdParam = urlParams.get('turfId');
+
+    if (turfIdParam) {
+      setSelectedTurfId(turfIdParam);
+      setCurrentView('turf-detail');
+    } else if (path.includes('/book/') || (redirectParam && redirectParam.includes('/book/'))) {
+      // Default fallback turf if direct /book route visited
+      if (!selectedTurfId) {
+        setSelectedTurfId('turf-1');
+        setCurrentView('turf-detail');
+      }
+    }
+  }, []);
 
   const handleSelectTurf = (turf: Turf) => {
     setSelectedTurfId(turf.id);
@@ -35,9 +63,6 @@ function MainAppContent() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
-      {/* Top Demo Switcher Bar */}
-      <RoleBanner />
-
       {/* Main App Navbar */}
       <Navbar
         currentView={currentView}
@@ -71,6 +96,7 @@ function MainAppContent() {
           <TurfDetailView
             turfId={selectedTurfId}
             onBack={() => setCurrentView('home')}
+            onOpenAuth={() => setShowAuthModal(true)}
           />
         )}
 
@@ -83,6 +109,10 @@ function MainAppContent() {
         {currentView === 'owner-dashboard' && <OwnerDashboard />}
 
         {currentView === 'admin-dashboard' && <AdminDashboard />}
+
+        {currentView === 'signup' && (
+          <SignUpPage onNavigateHome={(targetView) => setCurrentView(targetView || (role === 'owner' ? 'owner-dashboard' : 'home'))} />
+        )}
       </main>
 
       {/* Footer */}

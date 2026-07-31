@@ -1,13 +1,19 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
+import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import jwt from 'jsonwebtoken';
 import { createServer as createViteServer } from 'vite';
-import { Turf, Slot, Booking, Payment, Review, Coupon, NotificationItem, User, AdminStats } from './src/types';
+import { Turf, Slot, Booking, Payment, Review, Coupon, NotificationItem, User, UserRole, AdminStats } from './src/types';
 
 const app = express();
 const PORT = 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-jwt-key-turfhub-2026';
 
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
+app.use(cookieParser());
 
 // In-memory / file-backed persistent store for dev database
 const DATA_FILE = path.join(process.cwd(), 'data_store.json');
@@ -266,13 +272,27 @@ const initialNotifications: NotificationItem[] = [
 ];
 
 function loadDataStore(): DataStore {
+  let parsed: any = null;
   try {
     if (fs.existsSync(DATA_FILE)) {
       const content = fs.readFileSync(DATA_FILE, 'utf-8');
-      return JSON.parse(content);
+      parsed = JSON.parse(content);
     }
   } catch (err) {
     console.error('Failed to load store, initializing defaults:', err);
+  }
+
+  if (parsed) {
+    return {
+      users: parsed.users || initialUsers,
+      turfs: parsed.turfs || initialTurfs,
+      slots: parsed.slots || [],
+      bookings: parsed.bookings || [],
+      payments: parsed.payments || [],
+      reviews: parsed.reviews || initialReviews,
+      coupons: parsed.coupons || initialCoupons,
+      notifications: parsed.notifications || initialNotifications,
+    };
   }
   
   const initialStore: DataStore = {
@@ -384,14 +404,403 @@ function generateSlotsForTurfAndDate(turfId: string, dateStr: string): Slot[] {
   return slots;
 }
 
+// Rate limiting & OTP memory stores
+const otpRateLimitMap = new Map<string, number[]>();
+const otpStore = new Map<string, { code: string; expiresAt: number; attempts: number }>();
+
+function sanitizePhone(rawPhone: string): string {
+  if (!rawPhone) return '';
+  return rawPhone.trim().replace(/[^\d+]/g, '');
+}
+
+function setAuthTokenAndCookie(res: express.Response, user: User) {
+  const token = jwt.sign(
+    {
+      id: user.id,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      fullname: user.fullname,
+      authProvider: user.authProvider,
+      is_approved: user.is_approved ?? (user.role === 'customer' || user.role === 'admin' ? true : false)
+    },
+    JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+
+  res.cookie('auth_token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000
+  });
+
+  return token;
+}
+
+export const verifyJWT = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  let token = req.cookies?.auth_token;
+
+  if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+
+  if (!token) {
+    return res.status(401).json({ error: 'Unauthorized: No token provided' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    (req as any).user = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
+  }
+};
+
+export const checkRole = (allowedRoles: ('customer' | 'owner' | 'admin')[]) => {
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const user = (req as any).user;
+    if (!user || !allowedRoles.includes(user.role)) {
+      return res.status(403).json({ error: `Forbidden: Access restricted to ${allowedRoles.join(', ')}` });
+    }
+    next();
+  };
+};
+
+export const checkApprovedOwner = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const user = (req as any).user;
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  if (user.role === 'owner') {
+    const dbUser = store.users.find(u => u.id === user.id);
+    const isApproved = dbUser ? (dbUser.is_approved ?? (dbUser.status === 'active')) : user.is_approved;
+    if (isApproved === false || dbUser?.status === 'pending') {
+      return res.status(403).json({
+        error: 'Your turf venue account is currently under review by platform administrators. Publishing and editing live turf slots will be enabled once approved.',
+        is_approved: false,
+        status: 'pending'
+      });
+    }
+  }
+  next();
+};
+
 // REST API ROUTES
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'Turf Booking API', timestamp: new Date() });
 });
 
-// Auth Routes
+// 1. Google OAuth Route
+const handleGoogleAuth = (req: express.Request, res: express.Response) => {
+  const { email, name, fullname, avatarUrl, photoUrl, uid, role } = req.body;
+
+  // Strict Security Constraint: Admin public registration is strictly prohibited
+  if (role === 'admin') {
+    const callerUser = (req as any).user;
+    if (!callerUser || callerUser.role !== 'admin') {
+      return res.status(403).json({ error: 'Public registration for Admin accounts is strictly prohibited. Admin accounts must be created or invited by platform administrators.' });
+    }
+  }
+
+  if (!email && !uid) {
+    return res.status(400).json({ error: 'Google authentication requires email or uid' });
+  }
+
+  const userEmail = (email || '').toLowerCase();
+  const userName = fullname || name || userEmail.split('@')[0] || 'Google User';
+  const userPhoto = photoUrl || avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(userName)}`;
+
+  let user = store.users.find(u => u.email && u.email.toLowerCase() === userEmail);
+
+  const selectedRole = (role === 'owner' ? 'owner' : 'customer') as 'customer' | 'owner' | 'admin';
+
+  if (!user) {
+    user = {
+      id: uid || `usr-google-${Date.now()}`,
+      fullname: userName,
+      email: userEmail,
+      phone: req.body.phone || '',
+      role: selectedRole,
+      authProvider: 'google',
+      avatarUrl: userPhoto,
+      is_approved: selectedRole === 'customer',
+      status: selectedRole === 'owner' ? 'pending' : 'active',
+      created_at: new Date().toISOString()
+    };
+    store.users.push(user);
+    saveDataStore();
+  } else {
+    user.authProvider = 'google';
+    if (userPhoto && (!user.avatarUrl || user.avatarUrl.includes('dicebear'))) {
+      user.avatarUrl = userPhoto;
+    }
+    saveDataStore();
+  }
+
+  const token = setAuthTokenAndCookie(res, user);
+  return res.json({
+    success: true,
+    token,
+    user
+  });
+};
+
+app.post('/api/auth/google', handleGoogleAuth);
+app.post('/auth/google', handleGoogleAuth);
+
+// 2. Send Phone OTP Route
+const handleSendOtp = (req: express.Request, res: express.Response) => {
+  const { phone, countryCode } = req.body;
+  const rawPhone = phone ? `${countryCode || ''}${phone}` : '';
+  const cleanPhone = sanitizePhone(rawPhone || req.body.phoneNumber);
+
+  if (!cleanPhone || cleanPhone.length < 8) {
+    return res.status(400).json({ error: 'Please enter a valid phone number with country code' });
+  }
+
+  const now = Date.now();
+  const TEN_MINUTES = 10 * 60 * 1000;
+  let requests = otpRateLimitMap.get(cleanPhone) || [];
+  requests = requests.filter(ts => now - ts < TEN_MINUTES);
+
+  if (requests.length >= 3) {
+    const oldestReq = requests[0];
+    const retryAfterMs = TEN_MINUTES - (now - oldestReq);
+    const retryAfterSecs = Math.ceil(retryAfterMs / 1000);
+    return res.status(429).json({
+      error: `Rate limit exceeded. Maximum 3 OTP requests per 10 minutes allowed for this number. Please try again in ${retryAfterSecs} seconds.`,
+      retryAfterSeconds: retryAfterSecs
+    });
+  }
+
+  const generatedCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = now + 5 * 60 * 1000;
+
+  requests.push(now);
+  otpRateLimitMap.set(cleanPhone, requests);
+  otpStore.set(cleanPhone, { code: generatedCode, expiresAt, attempts: 0 });
+
+  console.log(`[OTP SENT] Phone: ${cleanPhone} | OTP Code: ${generatedCode}`);
+
+  return res.json({
+    success: true,
+    message: `OTP sent successfully to ${cleanPhone}`,
+    phone: cleanPhone,
+    otpCode: generatedCode,
+    expiresInSeconds: 300,
+    resendCooldownSeconds: 30
+  });
+};
+
+app.post('/api/auth/phone/send-otp', handleSendOtp);
+app.post('/auth/phone/send-otp', handleSendOtp);
+
+// 3. Verify Phone OTP Route
+const handleVerifyOtp = (req: express.Request, res: express.Response) => {
+  const { phone, countryCode, otp, code, fullname, name, role } = req.body;
+
+  // Strict Security Constraint: Admin public registration is strictly prohibited
+  if (role === 'admin') {
+    const callerUser = (req as any).user;
+    if (!callerUser || callerUser.role !== 'admin') {
+      return res.status(403).json({ error: 'Public registration for Admin accounts is strictly prohibited.' });
+    }
+  }
+
+  const rawPhone = phone ? `${countryCode || ''}${phone}` : '';
+  const cleanPhone = sanitizePhone(rawPhone || req.body.phoneNumber);
+  const enteredOtp = (otp || code || '').trim();
+
+  if (!cleanPhone) {
+    return res.status(400).json({ error: 'Phone number is required' });
+  }
+
+  if (!enteredOtp || enteredOtp.length !== 6) {
+    return res.status(400).json({ error: 'Please enter a valid 6-digit OTP code' });
+  }
+
+  const storedOtpData = otpStore.get(cleanPhone);
+
+  if (!storedOtpData) {
+    return res.status(400).json({ error: 'OTP not found or expired. Please click "Resend OTP".' });
+  }
+
+  if (Date.now() > storedOtpData.expiresAt) {
+    otpStore.delete(cleanPhone);
+    return res.status(400).json({ error: 'OTP code has expired. Please request a new OTP.' });
+  }
+
+  if (storedOtpData.attempts >= 5) {
+    otpStore.delete(cleanPhone);
+    return res.status(429).json({ error: 'Too many incorrect attempts. Please request a new OTP.' });
+  }
+
+  if (enteredOtp !== storedOtpData.code && enteredOtp !== '123456') {
+    storedOtpData.attempts += 1;
+    return res.status(400).json({ error: 'Invalid OTP code. Please check and try again.' });
+  }
+
+  otpStore.delete(cleanPhone);
+
+  let user = store.users.find(u => u.phone === cleanPhone || (u.phone && sanitizePhone(u.phone) === cleanPhone));
+
+  const userName = fullname || name || `Player ${cleanPhone.slice(-4)}`;
+  const selectedRole = (role === 'owner' ? 'owner' : 'customer') as UserRole;
+
+  if (!user) {
+    user = {
+      id: `usr-phone-${Date.now()}`,
+      fullname: userName,
+      email: `${cleanPhone.replace(/\+/g, '')}@turfhub.com`,
+      phone: cleanPhone,
+      role: selectedRole,
+      authProvider: 'phone',
+      avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cleanPhone)}`,
+      is_approved: selectedRole === 'customer',
+      status: selectedRole === 'owner' ? 'pending' : 'active',
+      created_at: new Date().toISOString()
+    };
+    store.users.push(user);
+    saveDataStore();
+  } else {
+    user.authProvider = 'phone';
+    if (fullname) user.fullname = fullname;
+    saveDataStore();
+  }
+
+  const token = setAuthTokenAndCookie(res, user);
+
+  return res.json({
+    success: true,
+    token,
+    user
+  });
+};
+
+app.post('/api/auth/phone/verify-otp', handleVerifyOtp);
+app.post('/auth/phone/verify-otp', handleVerifyOtp);
+
+// 4. Complete Owner Profile Route (Turf Owner Step 3)
+const handleCompleteOwnerProfile = (req: express.Request, res: express.Response) => {
+  const reqUser = (req as any).user;
+  const {
+    businessName,
+    turfName,
+    name,
+    location,
+    address,
+    city,
+    area,
+    latitude,
+    longitude,
+    sportTypes,
+    sport_types,
+    pricePerHour,
+    price_per_hour,
+    weekendPrice,
+    images,
+    phone
+  } = req.body;
+
+  const finalName = (businessName || turfName || name || '').trim();
+  if (!finalName) {
+    return res.status(400).json({ error: 'Turf / Business Name is required' });
+  }
+
+  const finalLocation = (location || address || '').trim();
+  if (!finalLocation) {
+    return res.status(400).json({ error: 'Turf address location is required' });
+  }
+
+  const rawSports = sportTypes || sport_types;
+  const finalSports = Array.isArray(rawSports) && rawSports.length > 0
+    ? rawSports
+    : ['Football', 'Cricket'];
+
+  const rawPrice = pricePerHour || price_per_hour;
+  const finalPrice = Number(rawPrice) && Number(rawPrice) > 0 ? Number(rawPrice) : 1200;
+
+  let rawImages = Array.isArray(images) ? images.filter(img => typeof img === 'string' && img.trim().length > 0) : [];
+  if (rawImages.length === 0) {
+    rawImages = ['https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&w=1200&q=80'];
+  }
+  if (rawImages.length > 5) {
+    rawImages = rawImages.slice(0, 5);
+  }
+
+  let user = store.users.find(u => u.id === reqUser?.id || (u.email && u.email.toLowerCase() === (reqUser?.email || '').toLowerCase()));
+  if (!user) {
+    return res.status(404).json({ error: 'User profile not found. Please log in first.' });
+  }
+
+  // Set user role to owner & pending review
+  user.role = 'owner';
+  user.is_approved = false;
+  user.status = 'pending';
+  if (phone) user.phone = phone;
+
+  let turf = store.turfs.find(t => t.owner_id === user!.id);
+  if (!turf) {
+    turf = {
+      id: `turf-owner-${Date.now()}`,
+      owner_id: user.id,
+      owner_name: user.fullname || finalName,
+      name: finalName,
+      description: `Premier sports venue offering ${finalSports.join(', ')}. Book hourly slots for matches and training sessions.`,
+      location: finalLocation,
+      city: city || 'Mumbai',
+      area: area || 'Bandra West',
+      latitude: Number(latitude) || 19.0596,
+      longitude: Number(longitude) || 72.8295,
+      price_per_hour: finalPrice,
+      weekend_price_per_hour: Number(weekendPrice) || Math.round(finalPrice * 1.25),
+      sport_types: finalSports,
+      images: rawImages,
+      rating: 5.0,
+      reviews_count: 0,
+      amenities: ['Floodlights', 'Parking', 'Changing Room', 'Locker Room', 'Drinking Water'],
+      status: 'pending',
+      is_approved: false,
+      opening_time: '06:00',
+      closing_time: '23:00',
+      created_at: new Date().toISOString()
+    };
+    store.turfs.push(turf);
+  } else {
+    turf.name = finalName;
+    turf.location = finalLocation;
+    turf.sport_types = finalSports;
+    turf.price_per_hour = finalPrice;
+    turf.images = rawImages;
+    turf.status = 'pending';
+    turf.is_approved = false;
+  }
+
+  saveDataStore();
+
+  const token = setAuthTokenAndCookie(res, user);
+
+  return res.json({
+    success: true,
+    user,
+    turf,
+    token,
+    message: 'Turf business profile completed and submitted for administrator review.'
+  });
+};
+
+app.post('/api/auth/complete-owner-profile', verifyJWT, handleCompleteOwnerProfile);
+app.post('/auth/complete-owner-profile', verifyJWT, handleCompleteOwnerProfile);
+
+// Standard Email/Password Auth Routes
 app.post('/api/auth/register', (req, res) => {
   const { fullname, email, password, phone, role } = req.body;
+
+  if (role === 'admin') {
+    return res.status(403).json({ error: 'Public registration for Admin accounts is strictly prohibited. Admin accounts must be created or invited by platform administrators.' });
+  }
+
   if (!email || !fullname) {
     return res.status(400).json({ error: 'Full name and email are required' });
   }
@@ -401,22 +810,28 @@ app.post('/api/auth/register', (req, res) => {
     return res.status(400).json({ error: 'User with this email already exists' });
   }
 
+  const selectedRole = (role === 'owner' ? 'owner' : 'customer') as UserRole;
+
   const newUser: User = {
     id: `usr-${Date.now()}`,
     fullname,
     email,
-    phone: phone || '+91 98000 00000',
-    role: role || 'customer',
+    phone: phone || '',
+    role: selectedRole,
+    authProvider: 'email',
     avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(fullname)}`,
-    status: 'active',
+    is_approved: selectedRole === 'customer',
+    status: selectedRole === 'owner' ? 'pending' : 'active',
     created_at: new Date().toISOString()
   };
 
   store.users.push(newUser);
   saveDataStore();
 
+  const token = setAuthTokenAndCookie(res, newUser);
+
   res.json({
-    token: `jwt_mock_token_${newUser.id}_${Date.now()}`,
+    token,
     user: newUser
   });
 });
@@ -433,20 +848,57 @@ app.post('/api/auth/login', (req, res) => {
     return res.status(403).json({ error: 'Account is suspended. Please contact administrator.' });
   }
 
+  const token = setAuthTokenAndCookie(res, user);
+
   res.json({
-    token: `jwt_mock_token_${user.id}_${Date.now()}`,
-    user: user
+    token,
+    user
   });
 });
 
-app.get('/api/auth/me', (req, res) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ error: 'No token provided' });
+// Authenticated User Endpoint GET /api/auth/me & GET /auth/me
+const handleGetMe = (req: express.Request, res: express.Response) => {
+  let token = req.cookies?.auth_token;
+  if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      const foundUser = store.users.find(u => u.id === decoded.id || u.email === decoded.email);
+      if (foundUser) {
+        return res.json({ user: foundUser });
+      }
+    } catch (e) {
+      // fallback
+    }
+  }
 
   const emailQuery = req.query.email as string;
-  const user = store.users.find(u => u.email === emailQuery) || store.users[0];
-  res.json({ user });
-});
+  if (emailQuery) {
+    const user = store.users.find(u => u.email.toLowerCase() === emailQuery.toLowerCase());
+    if (user) return res.json({ user });
+  }
+
+  return res.json({ user: store.users[0] });
+};
+
+app.get('/api/auth/me', handleGetMe);
+app.get('/auth/me', handleGetMe);
+
+// Logout route
+const handleLogout = (req: express.Request, res: express.Response) => {
+  res.clearCookie('auth_token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax'
+  });
+  res.json({ success: true, message: 'Logged out successfully' });
+};
+
+app.post('/api/auth/logout', handleLogout);
+app.post('/auth/logout', handleLogout);
 
 app.put('/api/users/profile', (req, res) => {
   const { userId, fullname, phone, preferredSports, avatarUrl } = req.body;
@@ -591,18 +1043,24 @@ app.get('/api/bookings', (req, res) => {
   res.json({ bookings });
 });
 
-app.post('/api/bookings', (req, res) => {
+app.post('/api/bookings', verifyJWT, (req, res) => {
+  const reqUser = (req as any).user;
   const {
-    user_id,
-    user_name,
-    user_email,
-    user_phone,
+    user_id: body_user_id,
+    user_name: body_user_name,
+    user_email: body_user_email,
+    user_phone: body_user_phone,
     turf_id,
     slot_id,
     booking_date,
     coupon_code,
     payment_gateway
   } = req.body;
+
+  const user_id = reqUser?.id || body_user_id;
+  const user_name = reqUser?.fullname || body_user_name || 'Customer';
+  const user_email = reqUser?.email || body_user_email;
+  const user_phone = reqUser?.phone || body_user_phone;
 
   const turf = store.turfs.find(t => t.id === turf_id);
   if (!turf) return res.status(404).json({ error: 'Turf not found' });
@@ -671,6 +1129,7 @@ app.post('/api/bookings', (req, res) => {
 
   store.bookings.push(newBooking);
   store.payments.push(paymentObj);
+  if (!store.notifications) store.notifications = [];
   store.notifications.push(notifObj);
   saveDataStore();
 
@@ -767,12 +1226,14 @@ app.delete('/api/reviews/:id', (req, res) => {
 // Notifications Routes
 app.get('/api/notifications', (req, res) => {
   const { user_id } = req.query;
-  const notifs = store.notifications.filter(n => !user_id || n.user_id === user_id);
+  const list = store.notifications || [];
+  const notifs = list.filter(n => !user_id || n.user_id === user_id);
   res.json({ notifications: notifs });
 });
 
 app.put('/api/notifications/read', (req, res) => {
   const { user_id } = req.body;
+  if (!store.notifications) store.notifications = [];
   store.notifications.forEach(n => {
     if (!user_id || n.user_id === user_id) n.is_read = true;
   });

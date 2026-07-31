@@ -19,7 +19,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   onClose,
   onSuccess
 }) => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const { showToast } = useNotifications();
 
   const [gateway, setGateway] = useState<'razorpay' | 'stripe'>('razorpay');
@@ -71,9 +71,16 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     setIsProcessing(true);
 
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const res = await fetch('/api/bookings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           user_id: user.id,
           user_name: user.fullname,

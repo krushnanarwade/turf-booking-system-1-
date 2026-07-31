@@ -21,7 +21,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const fetchNotifications = async () => {
     if (!user) return;
     try {
-      const res = await fetch(`/api/notifications?user_id=${user.id}`);
+      const res = await fetch(`/api/notifications?user_id=${encodeURIComponent(user.id)}`);
       if (res.ok) {
         const data = await res.json();
         setNotifications(data.notifications || []);

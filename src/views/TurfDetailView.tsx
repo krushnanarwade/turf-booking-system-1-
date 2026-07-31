@@ -6,6 +6,8 @@ import { ReceiptModal } from '../components/ReceiptModal';
 import { MapModal } from '../components/MapModal';
 import { ReviewModal } from '../components/ReviewModal';
 import { useWishlist } from '../context/WishlistContext';
+import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import {
   Star,
   MapPin,
@@ -24,9 +26,13 @@ import {
 interface TurfDetailViewProps {
   turfId: string;
   onBack: () => void;
+  onOpenAuth?: () => void;
 }
 
-export const TurfDetailView: React.FC<TurfDetailViewProps> = ({ turfId, onBack }) => {
+export const TurfDetailView: React.FC<TurfDetailViewProps> = ({ turfId, onBack, onOpenAuth }) => {
+  const { user, pendingBookingIntent, setPendingBookingIntent, clearPendingBookingIntent } = useAuth();
+  const { showToast } = useNotifications();
+
   const [turf, setTurf] = useState<Turf | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -49,6 +55,36 @@ export const TurfDetailView: React.FC<TurfDetailViewProps> = ({ turfId, onBack }
   useEffect(() => {
     fetchTurfDetails();
   }, [turfId]);
+
+  // Auto-resume booking if returning logged-in user has a pending booking intent
+  useEffect(() => {
+    if (user && pendingBookingIntent && pendingBookingIntent.turfId === turfId && turf) {
+      setSelectedSlot(pendingBookingIntent.slot);
+      setSelectedDate(pendingBookingIntent.date);
+      setShowPaymentModal(true);
+      showToast('Booking Resumed! 🎉', `Resuming reservation for slot ${pendingBookingIntent.slot.start_time} - ${pendingBookingIntent.slot.end_time}`);
+      clearPendingBookingIntent();
+    }
+  }, [user, pendingBookingIntent, turfId, turf]);
+
+  const handleProceedBooking = () => {
+    if (!selectedSlot || !turf) return;
+
+    if (!user) {
+      showToast('Please login to book this slot', 'Sign in to confirm your slot reservation.');
+      setPendingBookingIntent({
+        turfId: turf.id,
+        slot: selectedSlot,
+        date: selectedDate
+      });
+      if (onOpenAuth) {
+        onOpenAuth();
+      }
+      return;
+    }
+
+    setShowPaymentModal(true);
+  };
 
   const fetchTurfDetails = async () => {
     setLoading(true);
@@ -276,10 +312,10 @@ export const TurfDetailView: React.FC<TurfDetailViewProps> = ({ turfId, onBack }
                 </div>
 
                 <button
-                  onClick={() => setShowPaymentModal(true)}
+                  onClick={handleProceedBooking}
                   className="w-full mt-4 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold py-3.5 rounded-2xl transition-all shadow-lg shadow-emerald-500/20 text-xs cursor-pointer"
                 >
-                  Proceed to Payment & Confirm Slot
+                  Reserve Slot & Proceed to Payment
                 </button>
               </div>
             ) : (
